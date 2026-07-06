@@ -1,27 +1,4 @@
-import nodemailer from "nodemailer";
-
-let transporter;
-
-function getTransporter() {
-  if (!transporter) {
-    const user = process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_APP_PASSWORD;
-
-    if (!user || !pass) {
-      throw new Error(
-        "EMAIL_USER and EMAIL_APP_PASSWORD must be set in environment variables"
-      );
-    }
-
-    transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: { user, pass },
-    });
-  }
-  return transporter;
-}
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 export function generateVerificationCode() {
   // 6-digit numeric code, e.g. "042913"
@@ -29,9 +6,15 @@ export function generateVerificationCode() {
 }
 
 export async function sendVerificationEmail(toEmail, name, code) {
-  const mailOptions = {
-    from: `"StudyMind AI" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY must be set in environment variables");
+  }
+
+  const payload = {
+    from: "StudyMind AI <onboarding@resend.dev>",
+    to: [toEmail],
     subject: "Verify your StudyMind AI account",
     text:
       `Hi ${name},\n\n` +
@@ -50,5 +33,17 @@ export async function sendVerificationEmail(toEmail, name, code) {
     `,
   };
 
-  await getTransporter().sendMail(mailOptions);
+  const response = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Resend API error (${response.status}): ${errorBody}`);
+  }
 }
