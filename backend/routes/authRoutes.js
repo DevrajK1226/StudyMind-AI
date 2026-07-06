@@ -66,6 +66,7 @@ router.post("/register", async (req, res) => {
     try {
       await sendVerificationEmail(user.email, user.name, code);
     } catch (emailErr) {
+      console.error("Email send failed:", emailErr);
       return res.status(500).json({
         message:
           "Account created but the verification email failed to send. Check your EMAIL_USER/EMAIL_APP_PASSWORD setup and try resending.",
